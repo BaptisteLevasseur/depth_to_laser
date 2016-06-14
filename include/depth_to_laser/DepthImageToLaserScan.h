@@ -44,6 +44,7 @@
 #include <limits.h>
 #include <math.h>
 #include <iostream>
+#include <fstream>
 
 namespace depth_to_laser
 { 
@@ -139,7 +140,11 @@ namespace depth_to_laser
      * 
      */
     double angle_between_rays(const cv::Point3d& ray1, const cv::Point3d& ray2) const;
-    
+
+    // Determines if the depth corresponds to the depth of the floor
+
+  //  bool is_floor(float rayon, float alpha) const;
+    bool is_floor(float h_scan) const;
     /**
      * Determines whether or not new_value should replace old_value in the LaserScan.
      * 
@@ -153,7 +158,7 @@ namespace depth_to_laser
      * @return If true, insert new_value into the output LaserScan.
      * 
      */
-    bool use_point(const float angle, const float rayon, const float new_value, const float old_value, const float range_min, const float range_max) const;
+    bool use_point(const float new_value, const float old_value, const float range_min, const float range_max) const;
 
     /**
     * Converts the depth image to a laserscan using the DepthTraits to assist.
@@ -186,6 +191,62 @@ namespace depth_to_laser
       int offset = (int)(cam_model.cy()-scan_height/2);
       depth_row += offset*row_step; // Offset to center of image
 
+
+  //    std::ofstream outfile("height.txt");
+      for(int v = offset; v < offset+scan_height_; v++, depth_row += row_step){
+	if(v <= cam_model.cy()) {
+		// Rays to the roof 
+		for (int u = 0; u < (int)depth_msg->width; u++) {// Loop over each pixel in row 
+			T depth = depth_row[u];
+			double r = depth;
+			double th = -atan2((double)(u - center_x) * constant_x, unit_scaling); // Atan2(x, z), but depth divides out
+			int index = (th - scan_msg->angle_min) / scan_msg->angle_increment;
+			if (depth_to_laser::DepthTraits<T>::valid(depth)){ // Not NaN or Inf
+				// Calculate in XYZ
+				double x = (u - center_x) * depth * constant_x;
+				double y = (v - center_y) * depth * constant_y;
+				double z = depth_to_laser::DepthTraits<T>::toMeters(depth);
+				// Calculate actual distance
+				r = sqrt(pow(x, 2.0) + pow(z, 2.0));
+			}
+			if(use_point(r, scan_msg->ranges[index], scan_msg->range_min, scan_msg->range_max)){
+				scan_msg->ranges[index] = r;
+			}
+
+		}
+	}
+	else {
+		double alpha = atan2((v - center_y) * constant_y, unit_scaling);
+		// Rays to the floor
+		for (int u = 0; u < (int)depth_msg->width; u++) {// Loop over each pixel in row 
+			T depth = depth_row[u];
+			double r = depth;
+			double th = -atan2((double)(u - center_x) * constant_x, unit_scaling); // Atan2(x, z), but depth divides out
+			int index = (th - scan_msg->angle_min) / scan_msg->angle_increment;
+			double R;
+			if (depth_to_laser::DepthTraits<T>::valid(depth)){ // Not NaN or Inf
+				// Calculate in XYZ
+				double x = (u - center_x) * depth * constant_x;
+				double y = (v - center_y) * depth * constant_y;
+				double z = depth_to_laser::DepthTraits<T>::toMeters(depth);
+				// Calculate actual distance
+				r = sqrt(pow(x, 2.0) + pow(z, 2.0));
+				R = sqrt(pow(y, 2.0) + pow(z, 2.0));
+//				outfile << y << " ";
+			if(!is_floor(y) && use_point(r, scan_msg->ranges[index], scan_msg->range_min, scan_msg->range_max)){
+				scan_msg->ranges[index] = r;
+			}
+			}
+		//	else
+			//	outfile << "NaN ";
+
+		}
+//		outfile << std::endl;
+	}
+      }
+//	outfile.close();
+//	::exit(0);
+/*
       for(int v = offset; v < offset+scan_height_; v++, depth_row += row_step){
 		double alpha = atan2((v - center_y) * constant_y, unit_scaling);
 		for (int u = 0; u < (int)depth_msg->width; u++) // Loop over each pixel in row
@@ -195,7 +256,7 @@ namespace depth_to_laser
 		  double r = depth; // Assign to pass through NaNs and Infs
 		  double th = -atan2((double)(u - center_x) * constant_x, unit_scaling); // Atan2(x, z), but depth divides out
 		  int index = (th - scan_msg->angle_min) / scan_msg->angle_increment;
-		  double R = r; 
+		  double R = depth;
 		  if (depth_to_laser::DepthTraits<T>::valid(depth)){ // Not NaN or Inf
 		    // Calculate in XYZ
 		    double x = (u - center_x) * depth * constant_x;
@@ -206,12 +267,13 @@ namespace depth_to_laser
 		    double R = sqrt(pow(y, 2.0) + pow(z, 2.0));
 		  }
 	  
-	  // Determine if this point should be used.
-	  if(use_point(alpha, R, r, scan_msg->ranges[index], scan_msg->range_min, scan_msg->range_max)){
-	    scan_msg->ranges[index] = r;
-	  }
+		  // Determine if this point should be used.
+		  if(use_point(alpha, R, r, scan_msg->ranges[index], scan_msg->range_min, scan_msg->range_max)){
+			  scan_msg->ranges[index] = r;
+		  }
 	}
       }
+*/
     }
     
     image_geometry::PinholeCameraModel cam_model_; ///< image_geometry helper class for managing sensor_msgs/CameraInfo messages.

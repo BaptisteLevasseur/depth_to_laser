@@ -52,7 +52,17 @@ double DepthImageToLaserScan::angle_between_rays(const cv::Point3d& ray1, const 
   return acos(dot_product / (magnitude1 * magnitude2));
 }
 
-bool DepthImageToLaserScan::use_point(const float angle, const float rayon, const float new_value, const float old_value, const float range_min, const float range_max) const{  
+bool DepthImageToLaserScan::is_floor(float h_scan) const {
+
+  double hauteur = 0.297;
+  double delta = 0.05;
+//  bool is_floor = fabs(rayon*sin(angle)-hauteur) < delta;
+  bool is_floor = fabs(h_scan-hauteur) < delta;
+  return is_floor; //Retourne True si c'est le sol
+
+}
+
+bool DepthImageToLaserScan::use_point(const float new_value, const float old_value, const float range_min, const float range_max) const{  
   // Check for NaNs and Infs, a real number within our limits is more desirable than these.
   bool new_finite = std::isfinite(new_value);
   bool old_finite = std::isfinite(old_value);
@@ -60,22 +70,21 @@ bool DepthImageToLaserScan::use_point(const float angle, const float rayon, cons
   // Infs are preferable over NaNs (more information)
   if(!new_finite && !old_finite){ // Both are not NaN or Inf.
     if(!isnan(new_value)){ // new is not NaN, so use it's +-Inf value.
-      return true;
+      return true; //Si la valeur est infinie, on la prend
     }
-    return false; // Do not replace old_value
+    return false; // Do not replace old_value, SI la valeur est NaN, on la prend pas
   }
-  double hauteur = 0.31;
-  double delta = 0.02;
-  // If not in range, don't bother
+    // If not in range, don't bother
+
+
   bool range_check = range_min <= new_value && new_value <= range_max;
-  bool is_floor = (rayon < hauteur/sin(angle)+ delta) && (rayon> hauteur/sin(angle)-delta);
-  if(!range_check && is_floor){
-    return false;
+  if(!range_check){
+    return false; //Si la valeur est hors de la range, on la prend pas
+  }
+  if(!old_finite){ // New value is in range and finite, use it.
+    return true; // Si l'ancienne valeur est infinie ou NaN, on prend la nouvelle
   }
   
-  if(!old_finite){ // New value is in range and finite, use it.
-    return true;
-  }
   
   // Finally, if they are both numerical and new_value is closer than old_value, use new_value.
   bool shorter_check = new_value < old_value;
