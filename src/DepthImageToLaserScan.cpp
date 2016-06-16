@@ -54,8 +54,8 @@ double DepthImageToLaserScan::angle_between_rays(const cv::Point3d& ray1, const 
 
 bool DepthImageToLaserScan::is_floor(float h_scan) const {
 
-  double hauteur = 0.297;
-  double delta = 0.05;
+  double hauteur = 0.265;
+  double delta = 0.04;
 //  bool is_floor = fabs(rayon*sin(angle)-hauteur) < delta;
   bool is_floor = fabs(h_scan-hauteur) < delta;
   return is_floor; //Retourne True si c'est le sol

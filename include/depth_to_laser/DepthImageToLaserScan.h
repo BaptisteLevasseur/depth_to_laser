@@ -192,7 +192,7 @@ namespace depth_to_laser
       depth_row += offset*row_step; // Offset to center of image
 
 
-  //    std::ofstream outfile("height.txt");
+//      std::ofstream outfile("height.txt");
       for(int v = offset; v < offset+scan_height_; v++, depth_row += row_step){
 	if(v <= cam_model.cy()) {
 		// Rays to the roof 
@@ -237,8 +237,8 @@ namespace depth_to_laser
 				scan_msg->ranges[index] = r;
 			}
 			}
-		//	else
-			//	outfile << "NaN ";
+//			else
+//				outfile << "NaN ";
 
 		}
 //		outfile << std::endl;
